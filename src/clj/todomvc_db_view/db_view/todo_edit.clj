@@ -1,22 +1,23 @@
 (ns todomvc-db-view.db-view.todo-edit
-  (:require [todomvc-db-view.command.crypto :as command]
+  (:require [todomvc-db-view.datomic.core :as datomic]
             [datomic.api :as d]))
 
 (defn get-view
   "Provides the db-view to validate the input for a `:todo/edit!`
    command."
   [db db-view-input]
-  (when-let [params (:todo/edit db-view-input)]
-    (when (and (string? (:todo/title params))
-               (integer? (:db/id params))
+  (let [{:keys [db/id todo/title]} (:todo/edit db-view-input)]
+    (when (and (string? title)
+               (integer? id)
                ;; is it a todo item entity?
-               (:todo/title (d/entity db (:db/id params))))
+               (:todo/title (d/entity db
+                                      id)))
       ;; Example for a validation which ensures that the `:todo/title`
       ;; is longer than 2 characters after it has been edited in the
       ;; client:
-      (if (> (count (:todo/title params)) 2)
-        {:todo/edit {:todo/edit! (command/encrypt-command
-                                   (merge
-                                     {:command/type :todo/edit!}
-                                     (select-keys params [:todo/title :db/id])))}}
+      (if (> (count title)
+             2)
+        {:todo/edit {:todo/edit! [#'datomic/transact!
+                                  [{:db/id id
+                                    :todo/title title}]]}}
         {:todo/edit {:error "Title must be longer than 2 characters!"}}))))

@@ -1,6 +1,5 @@
 (ns dev.init
-  (:require [todomvc-db-view.system :as system]
-            [dev]))
+  (:require [todomvc-db-view.main]))
 
 ;; Concept:
 ;;
@@ -8,5 +7,4 @@
 ;; `:init-ns` in the `:dev` leiningen profile). It starts the system:
 
 (defonce start-system
-  (system/start!))
-
+  (todomvc-db-view.main/-main))
