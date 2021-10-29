@@ -1,9 +1,10 @@
 (ns todomvc-db-view.db-view.get
-  (:require [datomic.api :as d]
-            [todomvc-db-view.util.edn :as edn]
+  (:require [todomvc-db-view.util.edn :as edn]
             [todomvc-db-view.db-view.todo-list :as todo-list]
             [todomvc-db-view.db-view.todo-edit :as todo-edit]
-            [todomvc-db-view.db-view.todo-new :as todo-new]))
+            [todomvc-db-view.db-view.todo-new :as todo-new]
+            [clojure.walk :as walk]
+            ))
 
 ;; Concept:
 ;;
@@ -29,6 +30,16 @@
    ;; NOTE: add other db-view parts here.
    ))
 
+(defn prepare-commands
+  "Converts each command var into a symbol, so that it can be
+   serialized."
+  [x]
+  (walk/postwalk (fn [x]
+                   (if (var? x)
+                     (symbol x)
+                     x))
+                 x))
+
 (defn ring-handler
   "Ring handler to get the `:db-view/output` map for the given
    `:db-view/input` map in the `request` body."
@@ -41,6 +52,8 @@
     (let [db-view-input (edn/read-string (slurp (:body request)))]
       ;; NOTE: for a production app do the appropriate authorization
       ;;       checks:
-      (edn/response
-       (get-view db
-                 db-view-input)))))
+      (-> (get-view db
+                    db-view-input)
+          (prepare-commands)
+          (edn/response)
+          ))))

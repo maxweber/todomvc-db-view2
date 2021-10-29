@@ -1,24 +1,34 @@
 (ns todomvc-db-view.command.send
-  (:require [cljs-http.client :as http])
-  (:require-macros [cljs.core.async.macros :refer [go]]))
+  (:require [todomvc-db-view.state.core :as state]
+            [cljs-http.client :as http]
+            [cljs.core.async :as a])
+  (:require-macros [cljs.core.async.macros :refer [go-loop]]))
 
 ;; Concept:
 ;;
 ;; Helper namespace to send an encrypted command map to the server.
 
 (defn send!
-  "Sends the `encrypted-command` map to the server, returns a channel
-   with the response body or `false` if the request failed."
-  [encrypted-command]
-  (go
-    ;; TODO: add retries:
-    (let [response (<! (http/request
-                        {:request-method :post
-                         :url "/command"
-                         :body encrypted-command}))]
-      (if (= (:status response)
-             200)
-        (:body response)
-        (do
+  "Sends the `command` map to the server, returns the response body or
+   `false` if the request failed."
+  [command]
+  (let [params (assoc (:db-view/input @state/state)
+                      :db-view/command
+                      command)]
+    (go-loop []
+      (let [response (a/<! (http/request
+                            {:request-method :post
+                             :url "/db-view/command"
+                             :edn-params params
+                             ;;:transit-opts {:encoding :json-verbose}
+                             }))]
+        (case (:status response)
+          200
+          (:body response)
+
+          429
+          (do (a/<! (a/timeout (+ 500
+                                  (rand-int 500))))
+              (recur))
           ;; TODO: consider how to inform the user about errors.
           false)))))

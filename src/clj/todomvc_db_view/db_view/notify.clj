@@ -45,16 +45,10 @@
                                  dissoc
                                  channel))))))
 
-(defn notify
-  "A Datomic transaction listener that notifies all user browser
-   sessions, where the user was affected by the transaction of the
-   `tx-report`."
-  [tx-report]
-  (let [basis-t (d/basis-t (:db-after tx-report))
-        response (edn/response
-                  {:db/basis-t basis-t})]
-    ;; NOTE: for a production app only send notifications to the users
-    ;;       which are affected by this `tx-report`:
-    (doseq [channel (vals @client-listeners-state)]
-      (httpkit/send! channel
-                     response))))
+(defn notify!
+  []
+  ;; NOTE: for a production app only send notifications to the users
+  ;;       which are affected:
+  (doseq [channel (vals @client-listeners-state)]
+    (httpkit/send! channel
+                   (edn/response {}))))
