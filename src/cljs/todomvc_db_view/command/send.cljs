@@ -28,7 +28,8 @@
             (swap! state/state
                    assoc
                    :db-view/output
-                   db-view-value))
+                   db-view-value)
+            db-view-value)
 
           429
           (do (a/<! (a/timeout (+ 500
