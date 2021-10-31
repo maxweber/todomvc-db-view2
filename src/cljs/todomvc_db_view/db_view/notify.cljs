@@ -24,11 +24,11 @@
    server in the case of a server issue."
   []
   (go-loop []
-    (let [response (<! (http/request
-                         {:request-method :post
-                          :url "/db-view/notify"}))]
+    (let [response (a/<! (http/request
+                          {:request-method :post
+                           :url "/db-view/notify"}))]
       (if (= (:status response)
              200)
-        (<! (get/refresh!))
-        (<! (a/timeout 2000)))
+        (a/<! (get/refresh!))
+        (a/<! (a/timeout 2000)))
       (recur))))

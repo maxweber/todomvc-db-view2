@@ -2,7 +2,10 @@
   (:require [reagent.core :as r]
             [todomvc-db-view.state.core :as state]
             [todomvc-db-view.db-view.get :as db-view]
-            [todomvc-db-view.command.send :as command])
+            [todomvc-db-view.command.send :as command]
+            [clojure.string :as str]
+            [cljs.core.async :as a]
+            )
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
 (defn add-todo
@@ -13,17 +16,18 @@
           :todo/new]
          {:todo/title title})
   (go
-    (<! (db-view/refresh!))
-    (<! (command/send! (get-in @state/state
-                               [:db-view/output
-                                :todo/new
-                                :todo/new!])))))
+    (a/<! (db-view/refresh!))
+    (a/<! (command/send! (get-in @state/state
+                                 [:db-view/output
+                                  :todo/new
+                                  :todo/new!])))))
 
 (defn todo-input [{:keys [title on-save on-stop]}]
   (let [val (r/atom title)
         stop #(do (reset! val "")
-                  (if on-stop (on-stop)))
-        save #(let [v (-> @val str clojure.string/trim)]
+                  (when on-stop
+                    (on-stop)))
+        save #(let [v (-> @val str str/trim)]
                 (if-not (empty? v) (on-save v))
                 (stop))]
     (fn [{:keys [id class placeholder]}]
@@ -84,8 +88,8 @@
 (defn todo-item []
   (let [editing (r/atom false)]
     (fn [{:keys [db/id todo/done todo/title todo/done! todo/active! todo/delete!]}]
-      [:li {:class (str (if done "completed ")
-                        (if @editing "editing"))}
+      [:li {:class (str (when done "completed ")
+                        (when @editing "editing"))}
        [:div.view
         [:input.toggle {:type "checkbox"
                         :checked done
@@ -108,15 +112,15 @@
                                        {:todo/title new-title
                                         :db/id id})
                                 (go
-                                  (<! (db-view/refresh!))
+                                  (a/<! (db-view/refresh!))
                                   (if-let [error (get-in @state/state [:db-view/output
                                                                        :todo/edit
                                                                        :error])]
                                     (js/alert error)
-                                    (<! (command/send! (get-in @state/state
-                                                               [:db-view/output
-                                                                :todo/edit
-                                                                :todo/edit!]))))))
+                                    (a/<! (command/send! (get-in @state/state
+                                                                 [:db-view/output
+                                                                  :todo/edit
+                                                                  :todo/edit!]))))))
                      :on-stop #(reset! editing false)}])])))
 
 (defn todo-app []

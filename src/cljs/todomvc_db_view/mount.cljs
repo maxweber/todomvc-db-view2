@@ -2,7 +2,8 @@
   (:require [todomvc-db-view.db-view.get :as db-view]
             [todomvc-db-view.core :as core]
             [todomvc-db-view.db-view.notify :as notify]
-            [reagent.core :as r])
+            [reagent.core :as r]
+            [cljs.core.async :as a])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
 ;; Concept:
@@ -18,7 +19,7 @@
   ;; index.html and must be exported so it is available even in
   ;; :advanced release builds.
   (go
-    (<! (db-view/refresh!))
+    (a/<! (db-view/refresh!))
     (notify/start-listening)
     (start)))
 
