@@ -44,6 +44,10 @@
   (state/cursor [:db-view/input
                  :todo/list]))
 
+(def error-cursor
+  (state/cursor [:db-view/output
+                 :error]))
+
 (def todo-edit (with-meta todo-input
                  {:component-did-mount #(.focus (r/dom-node %))}))
 
@@ -108,22 +112,25 @@
                                         :todo/edit]
                                        {:todo/title new-title
                                         :db/id id})
-                                (go
-                                  (a/<! (db-view/refresh!))
-                                  (if-let [error (get-in @state/state [:db-view/output
-                                                                       :todo/edit
-                                                                       :error])]
-                                    (js/alert error)
-                                    (a/<! (command/send! (get-in @state/state
-                                                                 [:db-view/output
-                                                                  :todo/edit
-                                                                  :todo/edit!]))))))
-                     :on-stop #(reset! editing false)}])])))
+                                (command/send! [:todo/edit
+                                                :todo/edit!]))
+                     :on-stop (fn []
+                                (reset! editing false)
+                                (swap! state/state
+                                       update
+                                       :db-view/input
+                                       dissoc
+                                       :todo/edit))}])])))
 
 (defn todo-app []
   (let [todo-list @todo-list-cursor
         todo-items (:todo/list-items todo-list)]
     [:div
+     [:div {:style {:display "flex"
+                    :justify-content "center"
+                    :color "red"
+                    :height "20px"}}
+      @error-cursor]
      [:section#todoapp
       [:header#header
        [:h1 "todos"]

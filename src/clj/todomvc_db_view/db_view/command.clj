@@ -62,10 +62,8 @@
                        (throw (ex-info "handle-command failed"
                                        {:command command}
                                        e))))]
-        (merge {:status :ok}
-               ;; a command handler can return a result:
-               (select-keys result
-                            [:command/result]))))))
+        (select-keys result
+                     [:command/result])))))
 
 (defn ring-handler
   [db request]
@@ -73,7 +71,12 @@
              (= (:uri request) "/db-view/command"))
     (let [db-view-params (edn/read-string (slurp (:body request)))
           db-view-value (get/get-view db
-                                      db-view-params)]
-      (some-> (command! db-view-params
-                        db-view-value)
-              (edn/response)))))
+                                      db-view-params)
+          command-result (command! db-view-params
+                                   db-view-value)]
+      (edn/response (-> (if command-result
+                          (merge (get/get-view db
+                                               db-view-params)
+                                 command-result)
+                          db-view-value)
+                        (get/prepare-commands))))))

@@ -24,7 +24,11 @@
                              }))]
         (case (:status response)
           200
-          (:body response)
+          (let [db-view-value (:body response)]
+            (swap! state/state
+                   assoc
+                   :db-view/output
+                   db-view-value))
 
           429
           (do (a/<! (a/timeout (+ 500
