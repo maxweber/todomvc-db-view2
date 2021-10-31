@@ -64,7 +64,8 @@
   (let [selected (:todo/filter @todo-list-params-cursor
                                :all)
         props-for (fn [name]
-                    {:class (if (= name selected) "selected")
+                    {:class (when (= name selected)
+                              "selected")
                      :on-click (fn [_e]
                                  (select-filter! name))})
         todo-list @todo-list-cursor
