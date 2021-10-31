@@ -15,12 +15,8 @@
          [:db-view/input
           :todo/new]
          {:todo/title title})
-  (go
-    (a/<! (db-view/refresh!))
-    (a/<! (command/send! (get-in @state/state
-                                 [:db-view/output
-                                  :todo/new
-                                  :todo/new!])))))
+  (command/send! [:todo/new
+                  :todo/new!]))
 
 (defn todo-input [{:keys [title on-save on-stop]}]
   (let [val (r/atom title)
