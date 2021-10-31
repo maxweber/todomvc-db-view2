@@ -45,7 +45,7 @@
                              0
                              try-find-var)]
     ;; Only the server code should be able to add a var
-    ;; (clojure.lang.Var) as `:command/fn` to a map. Transit,
+    ;; (clojure.lang.Var) to a db-view value. Transit,
     ;; `clojure.edn/read-string` and even `clojure.core/read-string`
     ;; does not support vars out of the box. Pay attention to not add
     ;; a corresponding value handler, otherwise it might be possible
