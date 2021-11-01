@@ -9,9 +9,11 @@
   (when-let [title (get-in db-view-input
                            [:todo/new
                             :todo/title])]
-    (if (edit/valid-title? title)
-      {:todo/new {:todo/new! [#'datomic/transact!
-                              [{:db/id "new TODO"
-                                :todo/title title
-                                :todo/done false}]]}}
-      {:error edit/error-message})))
+    (when (= (:db-view/command db-view-input)
+             [:todo/new :todo/new!])
+      (if (edit/valid-title? title)
+        {:todo/new {:todo/new! [#'datomic/transact!
+                                [{:db/id "new TODO"
+                                  :todo/title title
+                                  :todo/done false}]]}}
+        {:error edit/error-message}))))

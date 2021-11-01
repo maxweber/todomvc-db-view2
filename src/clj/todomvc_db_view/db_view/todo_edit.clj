@@ -19,7 +19,9 @@
    command."
   [db db-view-input]
   (let [{:keys [db/id todo/title]} (:todo/edit db-view-input)]
-    (when (and (string? title)
+    (when (and (= (:db-view/command db-view-input)
+                  [:todo/edit :todo/edit!])
+               (string? title)
                (integer? id)
                ;; is it a todo item entity?
                (:todo/title (d/entity db
