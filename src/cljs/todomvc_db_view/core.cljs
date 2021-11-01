@@ -65,11 +65,13 @@
   [{:keys [class cursor command-path]}]
   (let [save! (fn []
                 (a/go
-                  (when (:changed @cursor)
+                  (if (:changed @cursor)
                     (when-not (:error
                                (a/<! (command/send! command-path)))
                       (reset! cursor
-                              nil)))))]
+                              nil))
+                    (reset! cursor
+                            nil))))]
     (r/create-class
      {
       :component-did-mount #(.focus (r/dom-node %))
