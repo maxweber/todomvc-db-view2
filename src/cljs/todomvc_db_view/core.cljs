@@ -16,11 +16,11 @@
 
 (def edit-cursor
   (state/cursor [:db-view/input
-                 :todo/edit]))
+                 :todo/edit!]))
 
 (def new-cursor
   (state/cursor [:db-view/input
-                 :todo/new]))
+                 :todo/new!]))
 
 (def error-cursor
   (state/cursor [:db-view/output
@@ -123,8 +123,7 @@
      (when editing
        [edit-todo {:class "edit"
                    :cursor edit-cursor
-                   :command-path [:todo/edit
-                                  :todo/edit!]}])]))
+                   :command-path [:todo/edit!]}])]))
 
 (defn todo-app []
   (let [todo-list @todo-list-cursor
@@ -139,8 +138,7 @@
       [:header#header
        [:h1 "todos"]
        [edit-todo {:cursor new-cursor
-                   :command-path [:todo/new
-                                  :todo/new!]}]]
+                   :command-path [:todo/new!]}]]
       (when (seq todo-items)
         [:<>
          [:section#main
