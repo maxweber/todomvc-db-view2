@@ -40,8 +40,7 @@
 
 (defn command!
   [db-view-params db-view-value]
-  (when-let [command (or (get-in db-view-value
-                                 (:db-view/command db-view-params))
+  (when-let [command (or (:db-view/command db-view-value)
                          (update (:db-view/command db-view-params)
                                  0
                                  try-find-var))]

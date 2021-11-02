@@ -11,29 +11,32 @@
 (defn send!
   "Sends the `command` map to the server, returns the response body or
    `false` if the request failed."
-  [command]
-  (let [params (assoc (:db-view/input @state/state)
-                      :db-view/command
-                      command)]
-    (go-loop []
-      (let [response (a/<! (http/request
-                            {:request-method :post
-                             :url "/db-view/command"
-                             :edn-params params
-                             ;;:transit-opts {:encoding :json-verbose}
-                             }))]
-        (case (:status response)
-          200
-          (let [db-view-value (:body response)]
-            (swap! state/state
-                   assoc
-                   :db-view/output
-                   db-view-value)
-            db-view-value)
+  ([command]
+   (let [params (cond-> (:db-view/input @state/state)
+                  command
+                  (assoc :db-view/command
+                         command))]
+     (go-loop []
+       (let [response (a/<! (http/request
+                             {:request-method :post
+                              :url "/db-view/command"
+                              :edn-params params
+                              ;;:transit-opts {:encoding :json-verbose}
+                              }))]
+         (case (:status response)
+           200
+           (let [db-view-value (:body response)]
+             (swap! state/state
+                    assoc
+                    :db-view/output
+                    db-view-value)
+             db-view-value)
 
-          429
-          (do (a/<! (a/timeout (+ 500
-                                  (rand-int 500))))
-              (recur))
-          ;; TODO: consider how to inform the user about errors.
-          false)))))
+           429
+           (do (a/<! (a/timeout (+ 500
+                                   (rand-int 500))))
+               (recur))
+           ;; TODO: consider how to inform the user about errors.
+           false)))))
+  ([]
+   (send! nil)))

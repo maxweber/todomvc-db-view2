@@ -19,16 +19,14 @@
    command."
   [db db-view-input]
   (let [{:keys [db/id todo/title]} (:todo/edit! db-view-input)]
-    (when (and (= (:db-view/command db-view-input)
-                  [:todo/edit!])
-               (string? title)
+    (when (and (string? title)
                (integer? id)
                ;; is it a todo item entity?
                (:todo/title (d/entity db
                                       id)))
 
       (if (valid-title? title)
-        {:todo/edit! [#'datomic/transact!
-                      [{:db/id id
-                        :todo/title title}]]}
+        {:db-view/command [#'datomic/transact!
+                           [{:db/id id
+                             :todo/title title}]]}
         {:error error-message}))))

@@ -62,14 +62,17 @@
         "Clear completed " (:todo/completed-count todo-list)])]))
 
 (defn edit-todo
-  [{:keys [class cursor command-path]}]
-  (let [save! (fn []
+  [{:keys [class cursor]}]
+  (let [status! (fn [status]
+                  (swap! cursor
+                         assoc
+                         :status
+                         status))
+        save! (fn []
                 (a/go
-                  (if (:changed @cursor)
-                    (when-not (:error
-                               (a/<! (command/send! command-path)))
-                      (reset! cursor
-                              nil))
+                  (if (:error
+                       (a/<! (command/send!)))
+                    (status! :error)
                     (reset! cursor
                             nil))))]
     (r/create-class
@@ -79,18 +82,21 @@
       (fn []
         [:input {:id "new-todo"
                  :class class
+                 :style (when (= (:status @cursor)
+                                 :error)
+                          {:border "1px solid red"})
                  :type "text"
                  :value (:todo/title @cursor)
                  :placeholder "What needs to be done?"
-                 :on-blur (fn [_e]
+                 :on-blur (fn [_]
                             (save!))
                  :on-change (fn [e]
                               (swap! cursor
                                      assoc
                                      :todo/title
                                      (.-value (.-target e))
-                                     :changed
-                                     true)
+                                     :status
+                                     :editing)
                               )
                  :on-key-down (fn [e]
                                 (when (= (.-which e)
@@ -122,8 +128,7 @@
                           (command/send! delete!))}]]
      (when editing
        [edit-todo {:class "edit"
-                   :cursor edit-cursor
-                   :command-path [:todo/edit!]}])]))
+                   :cursor edit-cursor}])]))
 
 (defn todo-app []
   (let [todo-list @todo-list-cursor
@@ -137,8 +142,7 @@
      [:section#todoapp
       [:header#header
        [:h1 "todos"]
-       [edit-todo {:cursor new-cursor
-                   :command-path [:todo/new!]}]]
+       [edit-todo {:cursor new-cursor}]]
       (when (seq todo-items)
         [:<>
          [:section#main
