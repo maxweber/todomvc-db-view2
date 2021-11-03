@@ -6,11 +6,11 @@
   "Provides the db-view for the `:todo/new!` command that creates new
    todo items."
   [db db-view-input]
-  (when-let [title (get-in db-view-input
-                           [:todo/new!
-                            :todo/title])]
-    (when (= (:db-view/command db-view-input)
-             [:todo/new!])
+  (when (= (:db-view/command db-view-input)
+           [:todo/new!])
+    (let [title (get-in db-view-input
+                        [:todo/new!
+                         :todo/title])]
       (if (edit/valid-title? title)
         {:todo/new! [#'datomic/transact!
                      [{:db/id "new TODO"
