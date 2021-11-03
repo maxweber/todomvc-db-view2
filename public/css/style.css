@@ -112,8 +112,7 @@ input[type="checkbox"] {
 	border-top-right-radius: 1px;
 }
 
-#new-todo,
-.edit {
+.new-todo {
 	position: relative;
 	margin: 0;
 	width: 100%;
@@ -135,10 +134,7 @@ input[type="checkbox"] {
 	-ms-font-smoothing: antialiased;
 	-o-font-smoothing: antialiased;
 	font-smoothing: antialiased;
-}
-
-#new-todo {
-	padding: 16px 16px 16px 60px;
+        padding: 16px 16px 16px 60px;
 	border: none;
 	background: rgba(0, 0, 0, 0.02);
 	z-index: 2;

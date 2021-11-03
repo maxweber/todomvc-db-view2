@@ -77,8 +77,7 @@
       :component-did-mount #(.focus (r/dom-node %))
       :reagent-render
       (fn []
-        [:input {:id "new-todo"
-                 :class class
+        [:input {:class class
                  :type "text"
                  :value (:todo/title @cursor)
                  :placeholder "What needs to be done?"
@@ -137,7 +136,8 @@
      [:section#todoapp
       [:header#header
        [:h1 "todos"]
-       [edit-todo {:cursor new-cursor
+       [edit-todo {:class "new-todo"
+                   :cursor new-cursor
                    :command-path [:todo/new!]}]]
       (when (seq todo-items)
         [:<>
