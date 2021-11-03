@@ -19,13 +19,13 @@
    that contains the `:db-view/output` map."
   [state-value]
   (go
-    (let [response (<! (http/request
-                        {:request-method :post
-                         :url "/db-view/get"
-                         ;; NOTE: for a production app add
-                         ;;       authorization here and prefer the
-                         ;;       Transit format:
-                         :edn-params (:db-view/input state-value)}))]
+    (let [response (a/<! (http/request
+                          {:request-method :post
+                           :url "/db-view/get"
+                           ;; NOTE: for a production app add
+                           ;;       authorization here and prefer the
+                           ;;       Transit format:
+                           :edn-params (:db-view/input state-value)}))]
       (:body response))))
 
 (defn refresh!
@@ -39,7 +39,7 @@
      (swap! state/state
             assoc
             :db-view/output
-            (<! (get-view @state/state))))))
+            (a/<! (get-view @state/state))))))
 
 
 

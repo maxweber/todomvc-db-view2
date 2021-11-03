@@ -2,39 +2,9 @@
   (:require [reagent.core :as r]
             [todomvc-db-view.state.core :as state]
             [todomvc-db-view.db-view.get :as db-view]
-            [todomvc-db-view.command.send :as command])
-  (:require-macros [cljs.core.async.macros :refer [go]]))
-
-(defn add-todo
-  [title]
-  (swap! state/state
-         assoc-in
-         [:db-view/input
-          :todo/new]
-         {:todo/title title})
-  (go
-    (<! (db-view/refresh!))
-    (<! (command/send! (get-in @state/state
-                               [:db-view/output
-                                :todo/new
-                                :todo/new!])))))
-
-(defn todo-input [{:keys [title on-save on-stop]}]
-  (let [val (r/atom title)
-        stop #(do (reset! val "")
-                  (if on-stop (on-stop)))
-        save #(let [v (-> @val str clojure.string/trim)]
-                (if-not (empty? v) (on-save v))
-                (stop))]
-    (fn [{:keys [id class placeholder]}]
-      [:input {:type "text" :value @val
-               :id id :class class :placeholder placeholder
-               :on-blur save
-               :on-change #(reset! val (-> % .-target .-value))
-               :on-key-down #(case (.-which %)
-                               13 (save)
-                               27 (stop)
-                               nil)}])))
+            [todomvc-db-view.command.send :as command]
+            [cljs.core.async :as a]
+            ))
 
 (def todo-list-cursor
   (state/cursor [:db-view/output
@@ -44,8 +14,17 @@
   (state/cursor [:db-view/input
                  :todo/list]))
 
-(def todo-edit (with-meta todo-input
-                 {:component-did-mount #(.focus (r/dom-node %))}))
+(def edit-cursor
+  (state/cursor [:db-view/input
+                 :todo/edit!]))
+
+(def new-cursor
+  (state/cursor [:db-view/input
+                 :todo/new!]))
+
+(def error-cursor
+  (state/cursor [:db-view/output
+                 :error]))
 
 (defn select-filter!
   "Selects the filter (`:all`, `:active` or `:completed`) for the todo
@@ -60,7 +39,8 @@
   (let [selected (:todo/filter @todo-list-params-cursor
                                :all)
         props-for (fn [name]
-                    {:class (if (= name selected) "selected")
+                    {:class (when (= name selected)
+                              "selected")
                      :on-click (fn [_e]
                                  (select-filter! name))})
         todo-list @todo-list-cursor
@@ -81,54 +61,84 @@
                      (command/send! (:todo/clear-completed! todo-list)))}
         "Clear completed " (:todo/completed-count todo-list)])]))
 
-(defn todo-item []
-  (let [editing (r/atom false)]
-    (fn [{:keys [db/id todo/done todo/title todo/done! todo/active! todo/delete!]}]
-      [:li {:class (str (if done "completed ")
-                        (if @editing "editing"))}
-       [:div.view
-        [:input.toggle {:type "checkbox"
-                        :checked done
-                        :on-change (fn [_e]
-                                     (if done!
-                                       (command/send! done!)
-                                       (command/send! active!)))}]
-        [:label {:on-double-click #(reset! editing true)} title]
+(defn edit-todo
+  [{:keys [class cursor command-path]}]
+  (let [save! (fn []
+                (a/go
+                  (if (:changed @cursor)
+                    (when-not (:error
+                               (a/<! (command/send! command-path)))
+                      (reset! cursor
+                              nil))
+                    (reset! cursor
+                            nil))))]
+    (r/create-class
+     {
+      :component-did-mount #(.focus (r/dom-node %))
+      :reagent-render
+      (fn []
+        [:input {:id "new-todo"
+                 :class class
+                 :type "text"
+                 :value (:todo/title @cursor)
+                 :placeholder "What needs to be done?"
+                 :on-blur (fn [_e]
+                            (save!))
+                 :on-change (fn [e]
+                              (swap! cursor
+                                     assoc
+                                     :todo/title
+                                     (.-value (.-target e))
+                                     :changed
+                                     true)
+                              )
+                 :on-key-down (fn [e]
+                                (when (= (.-which e)
+                                         13)
+                                  (save!)))
+                 }])})))
 
-        [:button.destroy {:on-click
-                          (fn []
-                            (command/send! delete!))}]]
-       (when @editing
-         [todo-edit {:class "edit" :title title
-                     :on-save (fn [new-title]
-                                (swap! state/state
-                                       assoc-in
-                                       [:db-view/input
-                                        :todo/edit]
-                                       {:todo/title new-title
-                                        :db/id id})
-                                (go
-                                  (<! (db-view/refresh!))
-                                  (if-let [error (get-in @state/state [:db-view/output
-                                                                       :todo/edit
-                                                                       :error])]
-                                    (js/alert error)
-                                    (<! (command/send! (get-in @state/state
-                                                               [:db-view/output
-                                                                :todo/edit
-                                                                :todo/edit!]))))))
-                     :on-stop #(reset! editing false)}])])))
+(defn todo-item
+  [{:keys [db/id todo/done todo/title todo/done! todo/active! todo/delete!]}]
+  (let [editing (= (:db/id @edit-cursor)
+                   id)]
+    [:li {:class (str (when done "completed ")
+                      (when editing "editing"))}
+     [:div.view
+      [:input.toggle {:type "checkbox"
+                      :checked done
+                      :on-change (fn [_e]
+                                   (if done!
+                                     (command/send! done!)
+                                     (command/send! active!)))}]
+      [:label {:on-double-click (fn [_e]
+                                  (reset! edit-cursor
+                                          {:todo/title title
+                                           :db/id id}))}
+       title]
+
+      [:button.destroy {:on-click
+                        (fn []
+                          (command/send! delete!))}]]
+     (when editing
+       [edit-todo {:class "edit"
+                   :cursor edit-cursor
+                   :command-path [:todo/edit!]}])]))
 
 (defn todo-app []
   (let [todo-list @todo-list-cursor
         todo-items (:todo/list-items todo-list)]
     [:div
+     [:div {:style {:display "flex"
+                    :justify-content "center"
+                    :color "red"
+                    :height "20px"}}
+      @error-cursor]
      [:section#todoapp
       [:header#header
        [:h1 "todos"]
-       [todo-input {:id "new-todo"
-                    :placeholder "What needs to be done?"
-                    :on-save add-todo}]]
+       [edit-todo {:cursor new-cursor
+                   :command-path [:todo/new!]}]]
       (when (seq todo-items)
         [:<>
          [:section#main

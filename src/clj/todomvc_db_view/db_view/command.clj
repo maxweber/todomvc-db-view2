@@ -9,10 +9,9 @@
    in the `:db-view/value`. The client must provide the command under
    the `:db-view/command` in the `:db-view/params`.
 
-   Alternatively the client has the option to provide a
-   `:db-view/command-path` in the `:db-view/params`, in the case that
-   it already knows the path, where the desired command will reside in
-   the resulting `:db-view/value`.
+   Alternatively the client has the option to provide a path as
+   `:db-view/command` where to find the command within
+   `:db-view/params` (with `get-in`).
 
    The API endpoint should not provide any command batching, it only
    receives one command at a time. Batching of multiple commands can be
@@ -41,11 +40,13 @@
 
 (defn command!
   [db-view-params db-view-value]
-  (when-let [command (update (:db-view/command db-view-params)
-                             0
-                             try-find-var)]
+  (when-let [command (or (get-in db-view-value
+                                 (:db-view/command db-view-params))
+                         (update (:db-view/command db-view-params)
+                                 0
+                                 try-find-var))]
     ;; Only the server code should be able to add a var
-    ;; (clojure.lang.Var) as `:command/fn` to a map. Transit,
+    ;; (clojure.lang.Var) to a db-view value. Transit,
     ;; `clojure.edn/read-string` and even `clojure.core/read-string`
     ;; does not support vars out of the box. Pay attention to not add
     ;; a corresponding value handler, otherwise it might be possible
@@ -61,10 +62,8 @@
                        (throw (ex-info "handle-command failed"
                                        {:command command}
                                        e))))]
-        (merge {:status :ok}
-               ;; a command handler can return a result:
-               (select-keys result
-                            [:command/result]))))))
+        (select-keys result
+                     [:command/result])))))
 
 (defn ring-handler
   [db request]
@@ -72,7 +71,12 @@
              (= (:uri request) "/db-view/command"))
     (let [db-view-params (edn/read-string (slurp (:body request)))
           db-view-value (get/get-view db
-                                      db-view-params)]
-      (some-> (command! db-view-params
-                        db-view-value)
-              (edn/response)))))
+                                      db-view-params)
+          command-result (command! db-view-params
+                                   db-view-value)]
+      (edn/response (-> (if command-result
+                          (merge (get/get-view db
+                                               db-view-params)
+                                 command-result)
+                          db-view-value)
+                        (get/prepare-commands))))))
